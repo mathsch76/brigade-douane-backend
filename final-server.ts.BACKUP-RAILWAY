@@ -1,0 +1,147 @@
+// final-server.ts - VERSION MODULAIRE 3.0
+import 'dotenv/config'; // ← AJOUT POUR CHARGER LE .ENV
+import express from 'express';
+import { config } from './config-simple';
+
+// Import des middleware
+import { corsConfig } from './middlewares/cors';
+
+// Import des routes modulaires
+import authRoutes from './routes/auth';
+import assistantRoutes from './routes/assistant';  // ← TON FICHIER EXISTANT
+import systemRoutes from './routes/system';        // ← TON FICHIER EXISTANT
+
+// Routes utilisateur (existantes)
+import userPreferencesRoutes from './routes/user/preferences';
+
+// LOGS DE DEMARRAGE
+console.log('🚀 NAO&CO Backend Starting - MODULAR VERSION...');
+console.log('📊 Environment:', config.nodeEnv);
+console.log('🌐 Port:', config.port);
+console.log('🔐 Supabase:', config.supabaseUrl ? '✅ Connected' : '❌ Missing');
+console.log('🤖 OpenAI:', config.openaiKey ? '✅ Configured' : '❌ Missing');
+console.log('🔑 JWT:', config.jwtSecret ? '✅ Configured' : '❌ Missing');
+
+const app = express();
+
+// MIDDLEWARE GLOBAL
+app.use(corsConfig);
+app.use(express.json({ limit: '1mb' }));
+
+// ===============================================
+// ROUTES MODULAIRES - NOUVELLE ARCHITECTURE
+// ===============================================
+
+// Routes d'authentification (ton système existant)
+app.use('/auth', authRoutes);
+
+// Routes utilisateur (tes routes existantes)
+app.use('/user', userPreferencesRoutes);
+
+// Routes assistants IA
+app.use('/assistant', assistantRoutes);
+
+// Routes système et monitoring
+app.use('/api', systemRoutes);
+
+// ===============================================
+// ROUTES DE COMPATIBILITÉ (pour éviter la casse)
+// ===============================================
+
+// Route d'accueil
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'NAO&CO Backend is running! 🚀',
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    version: '3.0-MODULAR',
+    architecture: 'microservices',
+    features: {
+      auth: '✅ JWT + Refresh Tokens',
+      database: '✅ Supabase',
+      ai: '✅ OpenAI Assistants',
+      cache: '✅ Intelligent Cache',
+      preferences: '✅ User/Bot/Avatar'
+    },
+    routes: {
+      auth: '/auth/*',
+      user: '/user/*', 
+      assistants: '/assistant/*',
+      system: '/api/*'
+    }
+  });
+});
+
+// Route de compatibilité pour /user/me (si pas dans tes routes)
+app.get('/user/me', async (req, res) => {
+  // Rediriger vers tes routes existantes ou implémenter ici
+  res.status(501).json({ 
+    error: 'Route to implement - use your existing auth routes' 
+  });
+});
+
+// ===============================================
+// GESTION D'ERREURS GLOBALE
+// ===============================================
+
+// 404 Handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    available_routes: [
+      'GET / - Home',
+      'POST /auth/login - Login',
+      'GET /auth/verify - Token verification',
+      'GET /user/preferences - User preferences',
+      'POST /assistant/ask - Ask assistant',
+      'GET /api/health - Health check'
+    ],
+    requested_path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Error Handler Global
+app.use((error: any, req: any, res: any, next: any) => {
+  console.error('🚨 Global Error Handler:', error);
+  
+  res.status(error.status || 500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
+    timestamp: new Date().toISOString(),
+    path: req.originalUrl
+  });
+});
+
+// ===============================================
+// DÉMARRAGE SERVEUR
+// ===============================================
+
+const PORT = process.env.PORT || config.port || 4002;
+
+app.listen(PORT, () => {
+  console.log('='.repeat(50));
+  console.log('🚀 NAO&CO Server running on port', PORT);
+  console.log('📊 Environment:', config.nodeEnv);
+  console.log('🏗️ Architecture: MODULAR (12 files)');
+  console.log('✨ Features: Complete system with intelligent cache');
+  console.log('🤖 Assistants configured:', Object.values({
+    emebi: process.env.ASSISTANT_EMEBI,
+    macf: process.env.ASSISTANT_MACF,
+    eudr: process.env.ASSISTANT_EUDR,
+    sanctions: process.env.ASSISTANT_SANCTIONS
+  }).filter(Boolean).length, '/4');
+  console.log('🌐 CORS origin:', process.env.FRONTEND_URL || 'default');
+  console.log('='.repeat(50));
+  console.log('🎯 Server ready for production!');
+  
+  // Test de connectivité au démarrage
+  if (config.supabaseUrl && config.openaiKey) {
+    console.log('✅ All services connected and ready');
+  } else {
+    console.warn('⚠️ Some services may not be configured properly');
+  }
+});
+
+export default app;

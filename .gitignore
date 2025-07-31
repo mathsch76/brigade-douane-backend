@@ -1,0 +1,41 @@
+# === 🔐 SECRETS & ENV ===
+.env
+.env.*
+*.env
+
+# === 📦 DÉPENDANCES ===
+node_modules/
+.pnpm/
+*.lock
+
+# === 🏗️ BUILD / DIST / CACHE ===
+dist/
+build/
+.next/
+out/
+.vite/
+.temp/
+.cache/
+
+# === ⚙️ CONFIGURATION / IDE ===
+.vscode/
+*.log
+logs/
+*.backup
+*.zip
+.DS_Store
+
+# === 🚧 SPÉCIFIQUE NAO&CO ===
+railway.json
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
+backend/dist/
+frontend/dist/
+
+# === 🧪 TEST / BACKUP ===
+*.test.*
+*.spec.*
+*.bak
+*.old
