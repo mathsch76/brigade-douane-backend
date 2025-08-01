@@ -49,7 +49,7 @@ app.use('/user', userPreferencesRoutes);
 app.use('/user', userRoutes);
 
 // ✅ 4. Routes assistants IA
-app.use('/api/assistant', assistantRoutes);
+app.use('/assistant', assistantRoutes);
 
 // ✅ 5. Routes système et monitoring
 app.use('/api', systemRoutes);
