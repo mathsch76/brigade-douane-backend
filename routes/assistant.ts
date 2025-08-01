@@ -116,19 +116,21 @@ router.get("/user-bots",
       console.log('🔍 Récupération bots utilisateur:', userId);
 
       // Récupérer les bots avec licences actives pour cet utilisateur
-      const { data: userBots, error } = await supabase
-        .from('user_bot_access')
-        .select(`
-          licenses!inner (
-            bots!inner (
-              id,
-              name,
-              description
-            )
-          )
-        `)
-        .eq('user_id', userId)
-        .eq('status', 'active');
+if (req.user?.role === 'admin') {
+  const { data: allBots, error } = await supabase
+    .from('bots')
+    .select('id, name, description');
+  
+  const botNames = allBots?.map(bot => bot.name) || [];
+  return res.json({ bots: botNames, user_bots: botNames });
+} else {
+  // Logique normale pour users
+  const { data: userBots, error } = await supabase
+    .from('user_bot_access')
+    .select(`...`)
+    .eq('user_id', userId)
+    .eq('status', 'active');
+}
 
       if (error) {
         logger.error("❌ Erreur récupération bots utilisateur", { 
