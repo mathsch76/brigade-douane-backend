@@ -1,3 +1,6 @@
+// 🔄 FORCE REDEPLOY - 31/07/2025 - 06:15
+
+
 /**
  * 🤖 SERVICE ASSISTANT OPENAI - VERSION AVEC TRACKING COMPLET
  * Gestion centralisée des interactions OpenAI et threads + sauvegarde tokens
@@ -8,12 +11,6 @@ import { generateCacheKey, getCachedResponse, setCachedResponse } from './cacheS
 import { OpenAI } from 'openai';
 import logger from '../utils/logger';
 import config from '../utils/config';
-import Redis from 'ioredis';
-
-const redis = config.isProd && process.env.REDIS_URL
-  ? new Redis(process.env.REDIS_URL)
-  : null;
-
 import { 
   enterpriseCache, 
 generateCacheKey as generateThreadCacheKey,
@@ -130,6 +127,9 @@ async function getUserCompanyId(userId: string): Promise<string | null> {
 
 // 🧵 GESTION DES THREADS (INCHANGÉ)
 
+/**
+ * Récupère ou crée un thread avec préférences (version optimisée)
+ */
 export async function getQuickThread(userId: string, chatbotId: string): Promise<CachedThreadData> {
   const cacheKey = generateThreadCacheKey(userId, chatbotId);
   
@@ -139,9 +139,6 @@ export async function getQuickThread(userId: string, chatbotId: string): Promise
     logger.debug('⚡ Cache hit thread', { userId, chatbotId });
     return cached;
   }
-
-  // 🔧 FIX : Déclarer threadId AVANT les blocs if/else
-  let threadId: string;
 
   try {
     // 🔍 Requête unique optimisée
@@ -155,39 +152,24 @@ export async function getQuickThread(userId: string, chatbotId: string): Promise
     ]);
 
     const preferences = prefsData;
+    let threadId: string;
     
     // Thread existant et récent ? (moins d'1h)
     if (threadData.data && (Date.now() - new Date(threadData.data.last_used_at).getTime()) < 3600000) {
-      // 🔧 FIX : Pas de "let" ici, on assigne à la variable globale
       threadId = threadData.data.thread_id;
-      
       // Update async sans attendre
       setImmediate(() => {
         supabase.from('user_threads')
           .update({ last_used_at: new Date().toISOString() })
           .eq('user_id', userId)
           .eq('chatbot_id', chatbotId)
-          .then(() => logger.debug('✅ Thread timestamp updated'))
-          .catch(() => logger.warn('⚠️ Failed to update thread timestamp'));
+          .then(() => logger.debug('Thread timestamp updated'))
+          .catch(() => logger.warn('Failed to update thread timestamp'));
       });
-      
-      console.log('✅ Thread existant réutilisé:', threadId);
-      
     } else {
       // Créer nouveau thread
-      console.log('🔄 Création nouveau thread...');
       const thread = await openai.beta.threads.create();
-      
-      // 🔧 FIX : Pas de "const" ici, on assigne à la variable globale
       threadId = thread.id;
-      
-      // 🔧 VALIDATION CRITIQUE
-      if (!threadId) {
-        console.error("❌ ERREUR CRITIQUE - threadId undefined après création thread !");
-        throw new Error("Impossible de créer un thread valide. OpenAI n'a pas retourné d'ID.");
-      }
-      
-      console.log('✅ Nouveau thread créé:', threadId);
       
       // Sauver async sans attendre
       setImmediate(() => {
@@ -199,39 +181,21 @@ export async function getQuickThread(userId: string, chatbotId: string): Promise
           last_used_at: new Date().toISOString(), 
           message_count: 0
         }, { onConflict: 'user_id,chatbot_id' })
-        .then(() => logger.debug('✅ Thread saved to DB'))
-        .catch((err) => logger.warn('⚠️ Failed to save thread to DB:', err.message));
+        .then(() => logger.debug('Thread saved to DB'))
+        .catch(() => logger.warn('Failed to save thread to DB'));
       });
-    }
-
-    // 🔧 VALIDATION FINALE avant retour
-    if (!threadId || threadId === 'undefined') {
-      throw new Error(`ThreadId invalide après traitement: ${threadId}`);
     }
 
     const result = { threadId, preferences };
     enterpriseCache.set(cacheKey, result);
-    
-    console.log('✅ getQuickThread résultat:', { threadId, preferences });
     return result;
 
   } catch (error) {
-    console.error('❌ Erreur dans getQuickThread:', error);
     logger.error('❌ Erreur thread', { error: (error as Error).message });
-    
     // Fallback : créer thread temporaire
-    console.log('🚨 Fallback: création thread temporaire...');
     const thread = await openai.beta.threads.create();
-    threadId = thread.id;
-    
-    if (!threadId) {
-      throw new Error("Impossible de créer un thread même en fallback");
-    }
-    
-    console.log('✅ Thread fallback créé:', threadId);
-    
     return { 
-      threadId: threadId, 
+      threadId: thread.id, 
       preferences: { contentLevel: 'intermediate', communicationStyle: 'professional' }
     };
   }
@@ -277,9 +241,7 @@ export async function waitForRunCompletion(threadId: string, runId: string): Pro
   // 🔍 DEBUG - Vérifier les paramètres reçus
   console.log('🔍 DEBUG waitForRunCompletion - threadId:', threadId);
   console.log('🔍 DEBUG waitForRunCompletion - runId:', runId);
-    console.log('🚨🚨🚨 NOUVEAU CODE DÉPLOYÉ - VERSION 17:50 🚨🚨🚨');
-  console.log('🔍 DEBUG waitForRunCompletion - threadId:', threadId);
-
+  
   // ✅ VALIDATION STRICTE DES PARAMÈTRES
   if (!threadId || threadId === 'undefined') {
     throw new Error(`ThreadId invalide: ${threadId}`);
@@ -303,41 +265,53 @@ export async function waitForRunCompletion(threadId: string, runId: string): Pro
     throw new Error(`RunId invalide (ne commence pas par run_): ${runId}`);
   }
 
- console.log('🚨 AVANT APPEL OPENAI - threadId type:', typeof threadId);
-  console.log('🚨 AVANT APPEL OPENAI - threadId value:', JSON.stringify(threadId));
-  console.log('🚨 AVANT APPEL OPENAI - runId type:', typeof runId);
-  console.log('🚨 AVANT APPEL OPENAI - runId value:', JSON.stringify(runId));
+  // 🚨 DEBUG EXTRÊME - JUSTE AVANT L'APPEL OPENAI
+  console.log('🚨 DEBUG EXTRÊME - JUSTE AVANT OPENAI CALL');
+  console.log('🚨 threadId type:', typeof threadId);
+  console.log('🚨 threadId value:', JSON.stringify(threadId));
+  console.log('🚨 runId type:', typeof runId);
+  console.log('🚨 runId value:', JSON.stringify(runId));
+  console.log('🚨 Paramètres à envoyer à OpenAI:', { threadId, runId });
 
-  // Forcer les types string
-  const safeThreadId = String(threadId);
-  const safeRunId = String(runId);
-
-  let runStatus = await openai.beta.threads.runs.retrieve(safeThreadId, safeRunId);
-  // 👆👆👆 Utilise safeThreadId et safeRunId au lieu de threadId et runId
-
-  let attempts = 0;
-  const maxAttempts = 60; // 60 secondes max
-  
-  while (runStatus.status === 'queued' || runStatus.status === 'in_progress') {
-    if (attempts >= maxAttempts) {
-      throw new Error(`Timeout: Run ${runId} a pris plus de ${maxAttempts} secondes`);
+  try {
+    // ✅ CORRECTION CRITIQUE : threadId EN PREMIER !
+    console.log('🚨 APPEL OPENAI AVEC:', `threadId="${threadId}", runId="${runId}"`);
+    let runStatus = await openai.beta.threads.runs.retrieve(runId, { thread_id: threadId });
+    console.log('🚨 APPEL OPENAI RÉUSSI !');
+    
+    let attempts = 0;
+    const maxAttempts = 60; // 60 secondes max
+    
+    while (runStatus.status === 'queued' || runStatus.status === 'in_progress') {
+      if (attempts >= maxAttempts) {
+        throw new Error(`Timeout: Run ${runId} a pris plus de ${maxAttempts} secondes`);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 🚨 DEBUG AUSSI LE DEUXIÈME APPEL
+      console.log('🚨 DEUXIÈME APPEL OPENAI AVEC:', `threadId="${threadId}", runId="${runId}"`);
+      runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+      console.log('🚨 DEUXIÈME APPEL RÉUSSI !');
+      attempts++;
+      
+      logger.debug(`🔄 Run status: ${runStatus.status}`, { threadId, runId, attempt: attempts });
     }
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-runStatus = await openai.beta.threads.runs.retrieve(safeThreadId, safeRunId);
-
-    attempts++;
+    if (runStatus.status !== 'completed') {
+      logger.error(`❌ Run failed`, { threadId, runId, status: runStatus.status });
+    }
     
-    logger.debug(`🔄 Run status: ${runStatus.status}`, { threadId, runId, attempt: attempts });
+    return runStatus;
+    
+  } catch (error) {
+    console.error('🚨 ERREUR DANS WAITFORRUNCOMPLETION:', error);
+    console.error('🚨 ERREUR - threadId était:', threadId);
+    console.error('🚨 ERREUR - runId était:', runId);
+    throw error;
   }
-  
-  if (runStatus.status !== 'completed') {
-    logger.error(`❌ Run failed`, { threadId, runId, status: runStatus.status });
-  }
-  
-  return runStatus;
 }
-
+  
 // 🚀 FONCTION PRINCIPALE DE TRAITEMENT (MODIFIÉE)
 
 /**
@@ -377,7 +351,7 @@ console.log('🔍 DEBUG - Company ID récupéré:', companyId);
 console.log('🔍 DEBUG - Avant gestion préférences');
 
 // 🧵 GESTION PRÉFÉRENCES ET CACHE (VERSION CORRIGÉE)
-let threadId: string | null = null;
+let threadId: string;
 let finalPreferences: UserPreferences;
 let intelligentCacheKey: string;
 
@@ -427,18 +401,21 @@ if (providedPreferences?.communication_style && providedPreferences?.content_ori
     cacheKey: intelligentCacheKey.substring(0, 60) + '...'
   });
 
-  // Récupérer threadId seulement si pas de cache
-  console.log('🔍 DEBUG - Récupération threadId pour frontend');
-  const threadData = await getQuickThread(userId, chatbotId);
-  threadId = threadData.threadId;
-  console.log('🔍 DEBUG - Thread ID récupéré pour frontend:', threadId);
+console.log('🔍 DEBUG - Appel getQuickThread avec userId:', userId);
+console.log('🔍 DEBUG - Appel getQuickThread avec chatbotId:', chatbotId);
+let threadData = await getQuickThread(userId, chatbotId);  // ✅ CHANGÉ en "let"
+console.log('🔍 DEBUG - threadData retournée:', threadData);
+console.log('🔍 DEBUG - threadData.threadId:', threadData.threadId);
+threadId = threadData.threadId;
+console.log('🔍 DEBUG - threadId final assigné:', threadId);
+
 
 } else {
   console.log('🔍 DEBUG - Fallback vers BDD');
   // Fallback : récupérer depuis la base via getQuickThread
-  const threadData = await getQuickThread(userId, chatbotId);
-  threadId = threadData.threadId;
-  finalPreferences = threadData.preferences;
+  let threadDataBDD = await getQuickThread(userId, chatbotId);  // ✅ RENOMMÉ pour éviter conflit
+  threadId = threadDataBDD.threadId;
+  finalPreferences = threadDataBDD.preferences;
   console.log('🔍 DEBUG - Thread ID récupéré depuis BDD:', threadId);
   logger.debug('✅ Utilisation préférences BDD', { finalPreferences });
 
@@ -496,21 +473,6 @@ const customInstructions = buildCustomInstructions(
 // 7. Créer et exécuter le run avec instructions personnalisées
 console.log('🔍 DEBUG AVANT création run - threadId:', threadId);
 console.log('🔍 DEBUG AVANT création run - assistantId:', assistantId);
-
-// const cacheKey = `thread:${userId}:${chatbotId}`;
-
-// 🧠 Récupérer threadId depuis Redis
-// threadId = redis ? await redis.get(cacheKey) : null;
-
-// if (!threadId) {
-  // const thread = await openai.beta.threads.create();
-  // threadId = thread.id; // ❗️Pas de let ici
-
-  // if (redis) {
-    // 💾 Stocker avec expiration (7 jours)
-    // await redis.set(cacheKey, threadId, 'EX', 60 * 60 * 24 * 7);
- //  }
-// }
 
 const run = await openai.beta.threads.runs.create(threadId, {
   assistant_id: assistantId,

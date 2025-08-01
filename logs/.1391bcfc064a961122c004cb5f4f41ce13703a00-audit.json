@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "C:\\Users\\mathi\\brigade-douane-test\\brigade-douane\\auth-backend\\logs\\.1391bcfc064a961122c004cb5f4f41ce13703a00-audit.json",
+    "files": [
+        {
+            "date": 1747759518791,
+            "name": "C:\\Users\\mathi\\brigade-douane-test\\brigade-douane\\auth-backend\\logs\\exceptions-2025-05-20.log",
+            "hash": "e1c37bbe03964844824ca5a56e47845f37b2bebc3c245bf07f7093e1f54afb70"
+        }
+    ],
+    "hashType": "sha256"
+}

@@ -1,0 +1,75 @@
+// Amélioration de la gestion des variables d'environnement
+// Nouveau fichier: auth-backend/utils/globalConfig.ts
+
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+
+// Charger les variables d'environnement
+dotenv.globalConfig();
+
+// Vérification obligatoire des variables critiques
+const requiredEnvVars = [
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'JWT_SECRET',
+  'OPENAI_API_KEY',
+];
+
+// Vérifier la présence des variables obligatoires
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+  throw new Error(`Variables d'environnement manquantes: ${missingVars.join(', ')}`);
+}
+
+// Configuration pour l'environnement en cours
+const isProd = process.env.NODE_ENV === 'production';
+
+export default {
+  // Serveur
+  port: process.env.PORT || 4002,
+  nodeEnv: process.env.NODE_ENV || 'development',
+  isProd,
+  
+  // Supabase
+  supabase: {
+    url: process.env.SUPABASE_URL!,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!
+  },
+  
+  // Auth
+  jwt: {
+    secret: process.env.JWT_SECRET!,
+    expiresIn: process.env.JWT_EXPIRES_IN || '2h',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'
+  },
+  
+  // Sessions
+session: {
+  secret: process.env.SESSION_SECRET || 'default-session-secret',
+  cookie: {
+    secure: isProd, // Secure en production
+    httpOnly: true,
+    sameSite: (isProd ? 'strict' : 'lax') as 'strict' | 'lax' | 'none',
+    maxAge: 24 * 60 * 60 * 1000 // 24 heures
+  }
+}, 
+  
+  // CORS
+  cors: {
+    origin: isProd ? process.env.FRONTEND_URL || 'https://votre-domaine.fr' : 'http://localhost:5173',
+    credentials: true
+  },
+  
+  // OpenAI
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY!,
+    timeout: parseInt(process.env.OPENAI_TIMEOUT || '30000', 10)
+  },
+  
+  // Logging
+  logging: {
+    level: process.env.LOG_LEVEL || (isProd ? 'info' : 'debug'),
+    directory: path.join(__dirname, '..', 'logs')
+  }
+};
