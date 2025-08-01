@@ -312,6 +312,9 @@ export async function waitForRunCompletion(threadId: string, runId: string): Pro
   const safeThreadId = String(threadId);
   const safeRunId = String(runId);
 
+console.log('🚨 DEBUG FINAL - safeThreadId:', safeThreadId, 'safeRunId:', safeRunId);
+let runStatus = await openai.beta.threads.runs.retrieve(safeThreadId, safeRunId);
+
   let runStatus = await openai.beta.threads.runs.retrieve(safeThreadId, safeRunId);
   // 👆👆👆 Utilise safeThreadId et safeRunId au lieu de threadId et runId
 
