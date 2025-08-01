@@ -1,41 +1,22 @@
-# === 🔐 SECRETS & ENV ===
-.env
-.env.*
-*.env
-
-# === 📦 DÉPENDANCES ===
+# Dépendances
 node_modules/
-.pnpm/
-*.lock
 
-# === 🏗️ BUILD / DIST / CACHE ===
+# Build
 dist/
 build/
-.next/
-out/
-.vite/
-.temp/
-.cache/
 
-# === ⚙️ CONFIGURATION / IDE ===
+# Environnements
+.env
+.env.local
+.env.production
+.env.development
+
+# IDE et outils
 .vscode/
-*.log
-logs/
-*.backup
-*.zip
+.idea/
+
+# OS et fichiers inutiles
 .DS_Store
-
-# === 🚧 SPÉCIFIQUE NAO&CO ===
-railway.json
-frontend/.env
-frontend/.env.*
-backend/.env
-backend/.env.*
-backend/dist/
-frontend/dist/
-
-# === 🧪 TEST / BACKUP ===
-*.test.*
-*.spec.*
-*.bak
-*.old
+Thumbs.db
+*.log
+*.swp
